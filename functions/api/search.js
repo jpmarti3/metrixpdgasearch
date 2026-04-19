@@ -521,10 +521,15 @@ async function collectAllSearchPages(criteria) {
 }
 
 async function searchAndScrape(payload) {
+  const today = new Date();
+  const end = new Date(today);
+  end.setDate(end.getDate() + 30);
+  const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
   const criteria = {
     name: payload.name || "",
-    date1: payload.date1 || "",
-    date2: payload.date2 || "",
+    date1: payload.date1 || fmt(today),
+    date2: payload.date2 || fmt(end),
     registration_date1: payload.registration_date1 || "",
     registration_date2: payload.registration_date2 || "",
     country_code: payload.country_code || "",
@@ -558,7 +563,6 @@ async function searchAndScrape(payload) {
   return {
     ok: true,
     cloudflareDeployable: true,
-    deploymentTarget: "Cloudflare Pages + Functions",
     runtime: "Cloudflare Pages Functions",
     searchUrl: searchData.searchUrl,
     criteria,
