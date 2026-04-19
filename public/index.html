@@ -1,146 +1,301 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Disc Golf Metrix Uusimaa C-tier search</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DiscGolfMetrix Pages App</title>
   <style>
-    :root {
-      color-scheme: light dark;
-      --bg: #ffffff;
-      --fg: #171717;
-      --muted: #666;
-      --border: #d7d7d7;
-      --soft: #f6f6f6;
-      --err: #b00020;
-      --ok: #0a6a2f;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #121212;
-        --fg: #f3f3f3;
-        --muted: #b6b6b6;
-        --border: #373737;
-        --soft: #1d1d1d;
-      }
-    }
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--fg); }
-    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
-    h1 { margin: 0 0 8px; }
-    .muted { color: var(--muted); }
-    .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 20px 0 8px; }
-    button { appearance: none; border: 1px solid var(--border); border-radius: 10px; padding: 11px 16px; cursor: pointer; font-size: 16px; background: var(--fg); color: var(--bg); font-weight: 600; }
-    button:disabled { opacity: 0.6; cursor: wait; }
-    .status { min-height: 1.5em; }
-    .summary { display: flex; gap: 16px; flex-wrap: wrap; margin: 14px 0 20px; }
-    .pill { background: var(--soft); border: 1px solid var(--border); border-radius: 999px; padding: 8px 12px; font-size: 14px; }
-    .card { border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin: 14px 0; background: var(--bg); }
-    .card h2 { margin: 0 0 10px; font-size: 20px; }
-    .grid { display: grid; grid-template-columns: 220px 1fr; gap: 8px 12px; }
-    .label { font-weight: 700; }
-    .log { white-space: pre-wrap; background: var(--soft); border: 1px solid var(--border); padding: 14px; border-radius: 12px; font-size: 14px; max-height: 380px; overflow: auto; }
-    .err { color: var(--err); }
-    .ok { color: var(--ok); }
-    a { color: inherit; }
-    @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #f4f7fb; color: #172033; }
+    .page { max-width: 1320px; margin: 0 auto; padding: 24px; }
+    .panel { background: #fff; border-radius: 18px; padding: 18px; box-shadow: 0 2px 12px rgba(0,0,0,.06); margin-bottom: 18px; }
+    h1, h2 { margin-top: 0; }
+    .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+    input { padding: 10px 12px; border: 1px solid #d5dbe7; border-radius: 10px; font: inherit; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+    button { padding: 11px 16px; border: 0; border-radius: 10px; background: #111827; color: #fff; font: inherit; cursor: pointer; }
+    button.secondary { background: #475569; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .checkbox { display: flex; align-items: center; gap: 8px; margin-top: 25px; }
+    .mono { background: #0f172a; color: #e2e8f0; padding: 14px; border-radius: 10px; white-space: pre-wrap; overflow: auto; font-family: ui-monospace, SFMono-Regular, monospace; }
+    .cards { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+    .card { background: #fafbff; border: 1px solid #e5eaf3; border-radius: 12px; padding: 14px; }
+    .card .k { color: #6b7280; font-size: 14px; }
+    .card .v { font-size: 22px; font-weight: 700; }
+    .wrap { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid #e8edf5; vertical-align: top; }
+    .subtle { color: #64748b; font-size: 13px; }
+    .ok { color: #166534; }
+    .warn { color: #9a3412; }
+    @media (max-width: 980px) { .grid, .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 640px) { .page { padding: 14px; } .grid, .cards { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Disc Golf Metrix Uusimaa C-tier search</h1>
-    <p class="muted">Fetches Disc Golf Metrix competitions using the exact Uusimaa search parameters for Finland, next 30 days, type C.</p>
+  <main class="page">
+    <section class="panel">
+      <h1>DiscGolfMetrix Pages App</h1>
+      <p>Cloudflare Pages + Functions version with dynamic search, detailed scraping, JSON export, and CSV export.</p>
+    </section>
 
-    <div class="toolbar">
-      <button id="loadBtn">Load competitions</button>
-      <span id="status" class="status muted"></span>
-    </div>
+    <section class="panel">
+      <form id="form" class="grid">
+        <label><span>Name</span><input name="name" value="" /></label>
+        <label><span>Start date</span><input name="date1" type="date" value="2026-04-19" /></label>
+        <label><span>End date</span><input name="date2" type="date" value="2026-05-19" /></label>
+        <label><span>Registration start</span><input name="registration_date1" type="date" value="" /></label>
+        <label><span>Registration end</span><input name="registration_date2" type="date" value="" /></label>
+        <label><span>Country code</span><input name="country_code" value="FI" /></label>
+        <label><span>Area</span><input name="area" value="Uusimaa" /></label>
+        <label><span>Type</span><input name="type" value="C" /></label>
+        <label><span>From</span><input name="from" type="number" min="1" value="1" /></label>
+        <label><span>To per batch</span><input name="to" type="number" min="1" value="20" /></label>
+        <label><span>Max pages</span><input name="maxPages" type="number" min="1" value="25" /></label>
+        <label><span>Concurrency</span><input name="concurrency" type="number" min="1" max="5" value="2" /></label>
+        <label class="checkbox"><input id="includeDetails" type="checkbox" checked /> <span>Scrape detailed event and registration pages</span></label>
+        <div class="actions">
+          <button type="submit">Run</button>
+          <button type="button" id="downloadJsonBtn" class="secondary" disabled>Download JSON</button>
+          <button type="button" id="downloadCsvBtn" class="secondary" disabled>Download CSV</button>
+        </div>
+      </form>
+    </section>
 
-    <div id="summary" class="summary"></div>
-    <div id="results"></div>
+    <section class="panel">
+      <strong>Status:</strong> <span id="status">Idle</span>
+      <pre id="searchUrl" class="mono">Search URL will appear here.</pre>
+    </section>
 
-    <h2>Log</h2>
-    <div id="log" class="log">Ready.</div>
-  </div>
+    <section class="panel">
+      <h2>Summary</h2>
+      <div id="cards" class="cards"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Events</h2>
+      <div class="wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Event</th>
+              <th>Date</th>
+              <th>Location</th>
+              <th>Shown players</th>
+              <th>Entrants scraped</th>
+              <th>Registration end</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Raw JSON</h2>
+      <pre id="json" class="mono">Run a search to see results.</pre>
+    </section>
+  </main>
 
   <script>
-    const btn = document.getElementById('loadBtn');
-    const statusEl = document.getElementById('status');
-    const resultsEl = document.getElementById('results');
-    const logEl = document.getElementById('log');
-    const summaryEl = document.getElementById('summary');
+    const form = document.getElementById("form");
+    const statusEl = document.getElementById("status");
+    const searchUrlEl = document.getElementById("searchUrl");
+    const cardsEl = document.getElementById("cards");
+    const tbody = document.getElementById("tbody");
+    const jsonEl = document.getElementById("json");
+    const downloadJsonBtn = document.getElementById("downloadJsonBtn");
+    const downloadCsvBtn = document.getElementById("downloadCsvBtn");
+    let lastResult = null;
 
-    function esc(value) {
-      return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    function payloadFromForm() {
+      const data = new FormData(form);
+      return {
+        name: data.get("name") || "",
+        date1: data.get("date1") || "",
+        date2: data.get("date2") || "",
+        registration_date1: data.get("registration_date1") || "",
+        registration_date2: data.get("registration_date2") || "",
+        country_code: data.get("country_code") || "",
+        area: data.get("area") || "",
+        type: data.get("type") || "",
+        from: Number(data.get("from") || 1),
+        to: Number(data.get("to") || 20),
+        maxPages: Number(data.get("maxPages") || 25),
+        concurrency: Number(data.get("concurrency") || 2),
+        includeDetails: document.getElementById("includeDetails").checked
+      };
     }
 
-    function setLog(lines) { logEl.textContent = Array.isArray(lines) ? lines.join('\n') : String(lines || ''); }
+    function esc(s) {
+      return String(s ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
 
-    function renderSummary(data) {
-      const items = [
-        `Matches: ${data.events?.length || 0}`,
-        `Rows parsed: ${data.row_count ?? 0}`,
-        `Details fetched: ${data.checked_count ?? 0}`,
-        `Area: Uusimaa`,
-        `Type: C`,
-        `Window: next 30 days`
+    function renderCards(result) {
+      cardsEl.innerHTML = "";
+      const entries = [
+        ["Events returned", result.totalEventsReturned],
+        ["Deployment target", result.deploymentTarget],
+        ["Current page flag", result.pagination?.currentPage || "1"],
+        ["Has next page flag", result.pagination?.hasNext ? "Yes" : "No"]
       ];
-      summaryEl.innerHTML = items.map((x) => `<div class="pill">${esc(x)}</div>`).join('');
-    }
-
-    function renderEvents(events) {
-      if (!events?.length) {
-        resultsEl.innerHTML = '<div class="card"><strong>No competitions found.</strong><div class="muted">Open the log below to see what the backend fetched and parsed.</div></div>';
-        return;
+      for (const [k, v] of entries) {
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = '<div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div>';
+        cardsEl.appendChild(div);
       }
-
-      resultsEl.innerHTML = events.map((ev) => `
-        <article class="card">
-          <h2><a href="${esc(ev.url || ev.source_url || '#')}" target="_blank" rel="noopener noreferrer">${esc(ev.title)}</a></h2>
-          <div class="grid">
-            <div class="label">Date</div><div>${esc(ev.date || '')}</div>
-            <div class="label">Place</div><div>${esc(ev.place || '')}</div>
-            <div class="label">Competition description</div><div>${esc(ev.description || '')}</div>
-            <div class="label">Types of classes</div><div>${esc((ev.classes || []).join(', ') || '')}</div>
-            <div class="label">Max amount of registrants</div><div>${esc(ev.max_registrants ?? '')}</div>
-            <div class="label">How many people have registered</div><div>${esc(ev.registered ?? '')}</div>
-            <div class="label">Due date for registration</div><div>${esc(ev.registration_due || '')}</div>
-            <div class="label">Source URL</div><div><a href="${esc(ev.source_url || ev.url || '#')}" target="_blank" rel="noopener noreferrer">${esc(ev.source_url || ev.url || '')}</a></div>
-          </div>
-        </article>
-      `).join('');
     }
 
-    async function fetchJson(url) {
-      const res = await fetch(url, { headers: { Accept: 'application/json' } });
-      const text = await res.text();
-      let data;
-      try { data = JSON.parse(text); } catch (err) { throw new Error(`Expected JSON from ${url}, got HTTP ${res.status}: ${text.slice(0, 500)}`); }
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-      return data;
+    function renderTable(result) {
+      tbody.innerHTML = "";
+      for (const event of result.events) {
+        const tr = document.createElement("tr");
+        const scrapeError = event.scrapeError ? '<div class="warn">' + esc(event.scrapeError) + '</div>' : '';
+        tr.innerHTML = `
+          <td>
+            <div><strong><a href="${esc(event.eventUrl)}" target="_blank" rel="noreferrer">${esc(event.title || event.eventId)}</a></strong></div>
+            <div class="subtle">${esc(event.eventType || "")}</div>
+            ${scrapeError}
+          </td>
+          <td>${esc(event.details?.headerText || event.dateTimeText || "")}</td>
+          <td>${esc([event.details?.region, event.details?.city].filter(Boolean).join(", ") || event.locationText || "")}</td>
+          <td>${esc(event.playersShown ?? event.registration?.registrationSettings?.registeredPlayers ?? "")}</td>
+          <td>${esc(event.registration?.entrants?.length ?? 0)}</td>
+          <td>${esc(event.registration?.registrationSettings?.registrationEnd || event.registrationOpenUntilText || "")}</td>
+        `;
+        tbody.appendChild(tr);
+      }
     }
 
-    async function load() {
-      btn.disabled = true;
-      statusEl.textContent = 'Loading…';
-      resultsEl.innerHTML = '';
-      summaryEl.innerHTML = '';
-      setLog(['Fetching /api/competitions ...']);
+    function rowsForCsv(result) {
+      const rows = [];
+      for (const event of result.events || []) {
+        const entrants = event.registration?.entrants || [];
+        if (!entrants.length) {
+          rows.push({
+            eventId: event.eventId,
+            eventTitle: event.title || "",
+            eventUrl: event.eventUrl || "",
+            dateText: event.details?.headerText || event.dateTimeText || "",
+            region: event.details?.region || "",
+            city: event.details?.city || "",
+            courseName: event.details?.courseName || "",
+            layoutName: event.details?.layoutName || "",
+            registrationEnd: event.registration?.registrationSettings?.registrationEnd || event.registrationOpenUntilText || "",
+            playerName: "",
+            divisionName: "",
+            pdgaNumber: "",
+            pdgaRating: "",
+            club: "",
+            waitingListPosition: "",
+            confirmed: "",
+            registeredOn: ""
+          });
+        } else {
+          for (const entrant of entrants) {
+            rows.push({
+              eventId: event.eventId,
+              eventTitle: event.title || "",
+              eventUrl: event.eventUrl || "",
+              dateText: event.details?.headerText || event.dateTimeText || "",
+              region: event.details?.region || "",
+              city: event.details?.city || "",
+              courseName: event.details?.courseName || "",
+              layoutName: event.details?.layoutName || "",
+              registrationEnd: event.registration?.registrationSettings?.registrationEnd || event.registrationOpenUntilText || "",
+              playerName: entrant.playerName || "",
+              divisionName: entrant.divisionName || "",
+              pdgaNumber: entrant.pdgaNumber || "",
+              pdgaRating: entrant.pdgaRating ?? "",
+              club: entrant.club || "",
+              waitingListPosition: entrant.waitingListPosition ?? "",
+              confirmed: entrant.confirmed ?? "",
+              registeredOn: entrant.registeredOn || ""
+            });
+          }
+        }
+      }
+      return rows;
+    }
+
+    function toCsv(rows) {
+      if (!rows.length) return "";
+      const headers = Object.keys(rows[0]);
+      const escapeCell = (value) => {
+        const s = String(value ?? "");
+        return /[",\n]/.test(s) ? '"' + s.replaceAll('"', '""') + '"' : s;
+      };
+      const lines = [
+        headers.join(","),
+        ...rows.map(row => headers.map(h => escapeCell(row[h])).join(","))
+      ];
+      return lines.join("\n");
+    }
+
+    function downloadBlob(filename, content, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function render(result) {
+      searchUrlEl.textContent = result.searchUrl || "";
+      jsonEl.textContent = JSON.stringify(result, null, 2);
+      renderCards(result);
+      renderTable(result);
+      downloadJsonBtn.disabled = false;
+      downloadCsvBtn.disabled = false;
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      statusEl.textContent = "Searching and scraping...";
+      downloadJsonBtn.disabled = true;
+      downloadCsvBtn.disabled = true;
+      cardsEl.innerHTML = "";
+      tbody.innerHTML = "";
+      jsonEl.textContent = "Working...";
+
       try {
-        const data = await fetchJson('/api/competitions');
-        renderSummary(data);
-        renderEvents(data.events || []);
-        setLog(data.logs || []);
-        statusEl.innerHTML = `<span class="ok">Done.</span>`;
-      } catch (err) {
-        statusEl.innerHTML = `<span class="err">Failed.</span>`;
-        setLog(String(err));
-      } finally {
-        btn.disabled = false;
-      }
-    }
+        const response = await fetch("/api/search", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payloadFromForm())
+        });
 
-    btn.addEventListener('click', load);
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || ("HTTP " + response.status));
+        lastResult = result;
+        render(result);
+        statusEl.textContent = "Done";
+      } catch (err) {
+        statusEl.textContent = "Error: " + err.message;
+        jsonEl.textContent = String(err.stack || err.message || err);
+      }
+    });
+
+    downloadJsonBtn.addEventListener("click", () => {
+      if (!lastResult) return;
+      downloadBlob("discgolfmetrix-results.json", JSON.stringify(lastResult, null, 2), "application/json");
+    });
+
+    downloadCsvBtn.addEventListener("click", () => {
+      if (!lastResult) return;
+      const csv = toCsv(rowsForCsv(lastResult));
+      downloadBlob("discgolfmetrix-results.csv", csv, "text/csv;charset=utf-8");
+    });
   </script>
 </body>
 </html>

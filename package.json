@@ -1,0 +1,12 @@
+{
+  "name": "discgolfmetrix-pages-app",
+  "version": "1.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler pages dev public --compatibility-date=2025-04-19",
+    "deploy": "wrangler pages deploy public --project-name discgolfmetrix-pages-app"
+  },
+  "devDependencies": {
+    "wrangler": "^4.11.1"
+  }
+}
