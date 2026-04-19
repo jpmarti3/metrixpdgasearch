@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PDGA C-tier near Helsinki</title>
+  <title>Disc Golf Metrix Uusimaa C-tier search</title>
   <style>
     :root {
       color-scheme: light dark;
@@ -25,94 +25,31 @@
       }
     }
     * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--fg);
-      line-height: 1.45;
-    }
-    .wrap {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 24px;
-    }
+    body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--fg); }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
     h1 { margin: 0 0 8px; }
     .muted { color: var(--muted); }
-    .toolbar {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
-      margin: 20px 0 8px;
-    }
-    button {
-      appearance: none;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 11px 16px;
-      cursor: pointer;
-      font-size: 16px;
-      background: var(--fg);
-      color: var(--bg);
-      font-weight: 600;
-    }
+    .toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 20px 0 8px; }
+    button { appearance: none; border: 1px solid var(--border); border-radius: 10px; padding: 11px 16px; cursor: pointer; font-size: 16px; background: var(--fg); color: var(--bg); font-weight: 600; }
     button:disabled { opacity: 0.6; cursor: wait; }
     .status { min-height: 1.5em; }
-    .summary {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-      margin: 14px 0 20px;
-    }
-    .pill {
-      background: var(--soft);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 8px 12px;
-      font-size: 14px;
-    }
-    .card {
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 16px;
-      margin: 14px 0;
-      background: var(--bg);
-    }
-    .card h2 {
-      margin: 0 0 10px;
-      font-size: 20px;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: 220px 1fr;
-      gap: 8px 12px;
-    }
+    .summary { display: flex; gap: 16px; flex-wrap: wrap; margin: 14px 0 20px; }
+    .pill { background: var(--soft); border: 1px solid var(--border); border-radius: 999px; padding: 8px 12px; font-size: 14px; }
+    .card { border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin: 14px 0; background: var(--bg); }
+    .card h2 { margin: 0 0 10px; font-size: 20px; }
+    .grid { display: grid; grid-template-columns: 220px 1fr; gap: 8px 12px; }
     .label { font-weight: 700; }
-    .log {
-      white-space: pre-wrap;
-      background: var(--soft);
-      border: 1px solid var(--border);
-      padding: 14px;
-      border-radius: 12px;
-      font-size: 14px;
-      max-height: 380px;
-      overflow: auto;
-    }
+    .log { white-space: pre-wrap; background: var(--soft); border: 1px solid var(--border); padding: 14px; border-radius: 12px; font-size: 14px; max-height: 380px; overflow: auto; }
     .err { color: var(--err); }
     .ok { color: var(--ok); }
     a { color: inherit; }
-    @media (max-width: 700px) {
-      .grid { grid-template-columns: 1fr; }
-    }
+    @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>PDGA C-tier disc golf competitions near Helsinki</h1>
-    <p class="muted">
-      Finds Disc Golf Metrix competitions within 100 km of Helsinki in the next 30 days and shows the public Metrix details.
-    </p>
+    <h1>Disc Golf Metrix Uusimaa C-tier search</h1>
+    <p class="muted">Fetches Disc Golf Metrix competitions using the exact Uusimaa search parameters for Finland, next 30 days, type C.</p>
 
     <div class="toolbar">
       <button id="loadBtn">Load competitions</button>
@@ -134,49 +71,41 @@
     const summaryEl = document.getElementById('summary');
 
     function esc(value) {
-      return String(value ?? '').replace(/[&<>"']/g, (c) => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
-      }[c]));
+      return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     }
 
-    function setLog(lines) {
-      logEl.textContent = Array.isArray(lines) ? lines.join('\n') : String(lines || '');
-    }
+    function setLog(lines) { logEl.textContent = Array.isArray(lines) ? lines.join('\n') : String(lines || ''); }
 
     function renderSummary(data) {
       const items = [
         `Matches: ${data.events?.length || 0}`,
-        `Candidates: ${data.candidate_count ?? 0}`,
-        `Checked pages: ${data.checked_count ?? 0}`,
-        `Search window: next 30 days`,
-        `Radius: 100 km from Helsinki`
+        `Rows parsed: ${data.row_count ?? 0}`,
+        `Details fetched: ${data.checked_count ?? 0}`,
+        `Area: Uusimaa`,
+        `Type: C`,
+        `Window: next 30 days`
       ];
       summaryEl.innerHTML = items.map((x) => `<div class="pill">${esc(x)}</div>`).join('');
     }
 
     function renderEvents(events) {
       if (!events?.length) {
-        resultsEl.innerHTML = '<div class="card"><strong>No competitions found.</strong><div class="muted">Open the log below to see which event pages were checked and why they were filtered out.</div></div>';
+        resultsEl.innerHTML = '<div class="card"><strong>No competitions found.</strong><div class="muted">Open the log below to see what the backend fetched and parsed.</div></div>';
         return;
       }
 
       resultsEl.innerHTML = events.map((ev) => `
         <article class="card">
-          <h2><a href="${esc(ev.url)}" target="_blank" rel="noopener noreferrer">${esc(ev.title)}</a></h2>
+          <h2><a href="${esc(ev.url || ev.source_url || '#')}" target="_blank" rel="noopener noreferrer">${esc(ev.title)}</a></h2>
           <div class="grid">
             <div class="label">Date</div><div>${esc(ev.date || '')}</div>
             <div class="label">Place</div><div>${esc(ev.place || '')}</div>
-            <div class="label">Course</div><div>${esc(ev.course || '')}</div>
             <div class="label">Competition description</div><div>${esc(ev.description || '')}</div>
             <div class="label">Types of classes</div><div>${esc((ev.classes || []).join(', ') || '')}</div>
             <div class="label">Max amount of registrants</div><div>${esc(ev.max_registrants ?? '')}</div>
-            <div class="label">How many registered</div><div>${esc(ev.registered ?? '')}</div>
-            <div class="label">Registration due date</div><div>${esc(ev.registration_due || '')}</div>
-            <div class="label">Distance from Helsinki</div><div>${esc(ev.distance_km != null ? `${ev.distance_km} km` : '')}</div>
+            <div class="label">How many people have registered</div><div>${esc(ev.registered ?? '')}</div>
+            <div class="label">Due date for registration</div><div>${esc(ev.registration_due || '')}</div>
+            <div class="label">Source URL</div><div><a href="${esc(ev.source_url || ev.url || '#')}" target="_blank" rel="noopener noreferrer">${esc(ev.source_url || ev.url || '')}</a></div>
           </div>
         </article>
       `).join('');
@@ -186,11 +115,7 @@
       const res = await fetch(url, { headers: { Accept: 'application/json' } });
       const text = await res.text();
       let data;
-      try {
-        data = JSON.parse(text);
-      } catch (err) {
-        throw new Error(`Expected JSON from ${url}, got HTTP ${res.status}: ${text.slice(0, 300)}`);
-      }
+      try { data = JSON.parse(text); } catch (err) { throw new Error(`Expected JSON from ${url}, got HTTP ${res.status}: ${text.slice(0, 500)}`); }
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       return data;
     }

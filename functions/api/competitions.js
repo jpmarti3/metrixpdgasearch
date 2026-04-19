@@ -1,49 +1,3 @@
-const HELSINKI = { lat: 60.1699, lon: 24.9384 };
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
-
-const LIST_URLS = [
-  'https://discgolfmetrix.com/?country_code=FI&default_period=3&type=A&u=competitions_list',
-  'https://discgolfmetrix.com/?country_code=FI&default_period=6&type=A&u=competitions_list',
-  'https://discgolfmetrix.com/?club=A1&country_code=FI&default_period=3&type=A&u=competitions_list',
-  'https://discgolfmetrix.com/?club=A1&country_code=FI&default_period=6&type=A&u=competitions_list',
-  'https://discgolfmetrix.com/?country_code=FI&default_period=3&sort_name=location&sort_order=asc&type=A&u=competitions_list',
-  'https://discgolfmetrix.com/?country_code=FI&default_period=3&sort_name=name&sort_order=asc&type=A&u=competitions_list'
-];
-
-const SEARCH_QUERIES = [
-  'site:discgolfmetrix.com "C PDGA" "Sipoo" "discgolfmetrix.com/"',
-  'site:discgolfmetrix.com "C PDGA" "Helsinki" "discgolfmetrix.com/"',
-  'site:discgolfmetrix.com "C PDGA" "Tuusula" "discgolfmetrix.com/"',
-  'site:discgolfmetrix.com "C PDGA" "Järvenpää" "discgolfmetrix.com/"',
-  'site:discgolfmetrix.com "C PDGA" "Kirkkonummi" "discgolfmetrix.com/"'
-];
-
-const FALLBACK_COORDS = new Map([
-  ['helsinki', [60.1699, 24.9384]],
-  ['meilahti', [60.1901, 24.9012]],
-  ['espoo', [60.2055, 24.6559]],
-  ['vantaa', [60.2941, 25.041]],
-  ['sipoo', [60.3775, 25.2691]],
-  ['sibbe', [60.3037, 25.2348]],
-  ['nikkilä', [60.377, 25.283]],
-  ['nikkilä', [60.377, 25.283]],
-  ['nevas', [60.2453, 25.261]],
-  ['kerava', [60.4034, 25.105]],
-  ['jarvenpaa', [60.4737, 25.0899]],
-  ['järvenpää', [60.4737, 25.0899]],
-  ['tuusula', [60.4037, 25.0264]],
-  ['porvoo', [60.3923, 25.6651]],
-  ['kirkkonummi', [60.1237, 24.4385]],
-  ['nurmijarvi', [60.4647, 24.8073]],
-  ['nurmijärvi', [60.4647, 24.8073]],
-  ['vihti', [60.417, 24.3197]],
-  ['hyvinkaa', [60.6333, 24.8667]],
-  ['hyvinkää', [60.6333, 24.8667]],
-  ['lohja', [60.2486, 24.0653]],
-  ['hanko', [59.829, 22.968]],
-  ['raasepori', [59.9731, 23.4339]]
-]);
-
 function json(data, status = 200) {
   return new Response(JSON.stringify(data, null, 2), {
     status,
@@ -54,273 +8,225 @@ function json(data, status = 200) {
   });
 }
 
-async function fetchText(url, opts = {}) {
+function formatDateForParam(date) {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(date.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function buildSearchUrl() {
+  const start = new Date();
+  const end = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const params = new URLSearchParams({
+    u: 'competitions_all',
+    view: '',
+    competition_name: '',
+    period: 'next30',
+    date1: formatDateForParam(start),
+    date2: formatDateForParam(end),
+    my_country: '',
+    registration_open: '',
+    registration_date1: '',
+    registration_date2: '',
+    country_code: 'FI',
+    my_club: '',
+    club_type: '',
+    club_id: '',
+    association_id: '0',
+    close_to_me: '',
+    area: 'Uusimaa',
+    city: '',
+    course_id: '',
+    type: 'C',
+    division: '',
+    my: '',
+    sort_name: '',
+    sort_order: '',
+    my_all: ''
+  });
+  return `https://discgolfmetrix.com/?${params.toString()}`;
+}
+
+async function fetchText(url) {
   const res = await fetch(url, {
     method: 'GET',
     redirect: 'follow',
     headers: {
-      'user-agent': 'Mozilla/5.0 (compatible; metrix-search/1.0; +https://metrixpdgasearch.pages.dev)',
+      'user-agent': 'Mozilla/5.0 (compatible; metrix-uusimaa-search/1.0; +https://pages.dev)',
+      'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       'accept-language': 'en-US,en;q=0.9,fi;q=0.8',
-      ...(opts.headers || {})
+      'cache-control': 'no-cache'
     }
   });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   return await res.text();
 }
 
-function stripHtml(rawHtml) {
-  return rawHtml
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
+function decodeEntities(text) {
+  return text
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/gi, '&')
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'")
     .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/\s+/g, ' ')
-    .trim();
+    .replace(/&gt;/gi, '>');
 }
 
-function normalizeMetrixUrl(url) {
-  const clean = String(url).replace(/&amp;/g, '&');
-  let m = clean.match(/discgolfmetrix\.com\/(?:\?ID=)?(\d+)/i);
+function stripHtml(rawHtml) {
+  return decodeEntities(
+    rawHtml
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/tr>/gi, '\n')
+      .replace(/<\/t[dh]>/gi, ' | ')
+      .replace(/<[^>]+>/g, ' ')
+  )
+  .replace(/\r/g, '')
+  .replace(/[ \t]+/g, ' ')
+  .replace(/ *\n+ */g, '\n')
+  .replace(/\|\s*\|/g, '|')
+  .trim();
+}
+
+function normalizeEventUrl(input) {
+  const text = String(input || '').replace(/&amp;/g, '&');
+  let m = text.match(/https?:\/\/discgolfmetrix\.com\/(?:\?ID=)?(\d+)/i);
   if (m) return `https://discgolfmetrix.com/${m[1]}`;
-  m = clean.match(/[?&]ID=(\d+)/i);
+  m = text.match(/href=["']([^"']*(?:\?ID=\d+|\/\d+)[^"']*)["']/i);
+  if (m) return normalizeEventUrl(m[1]);
+  m = text.match(/[?&]ID=(\d+)/i);
+  if (m) return `https://discgolfmetrix.com/${m[1]}`;
+  m = text.match(/\/(\d{4,})\b/);
   if (m) return `https://discgolfmetrix.com/${m[1]}`;
   return null;
 }
 
 function extractEventUrlsFromHtml(html) {
-  const urls = new Set();
-  const patterns = [
-    /href=["']([^"']*discgolfmetrix\.com\/(?:\?ID=)?\d+[^"']*)["']/gi,
-    /href=["']([^"']*(?:\/(?:\?ID=)?\d+|\?ID=\d+)[^"']*)["']/gi,
-    /discgolfmetrix\.com\/(?:\?ID=)?(\d+)/gi,
-    /[?&]ID=(\d+)/gi
-  ];
-  for (const re of patterns) {
-    let m;
-    while ((m = re.exec(html)) !== null) {
-      const value = m[1] && /\d/.test(m[1]) ? m[1] : m[0];
-      const normalized = normalizeMetrixUrl(value);
-      if (normalized) urls.add(normalized);
-    }
-  }
-  return urls;
-}
-
-function parseBingRss(xml) {
-  const items = [];
-  const regex = /<item>[\s\S]*?<title>([\s\S]*?)<\/title>[\s\S]*?<link>([\s\S]*?)<\/link>[\s\S]*?<description>([\s\S]*?)<\/description>[\s\S]*?<\/item>/gi;
+  const urls = [];
+  const seen = new Set();
+  const re = /href=["']([^"']*(?:\?ID=\d+|\/\d+)[^"']*)["']/gi;
   let m;
-  while ((m = regex.exec(xml)) !== null) {
-    items.push({ title: m[1], link: m[2], description: m[3] });
-  }
-  return items;
-}
-
-function extractEventUrlsFromText(text) {
-  const urls = new Set();
-  const patterns = [/discgolfmetrix\.com\/(?:\?ID=)?(\d+)/gi, /[?&]ID=(\d+)/gi];
-  for (const re of patterns) {
-    let m;
-    while ((m = re.exec(text)) !== null) urls.add(`https://discgolfmetrix.com/${m[1]}`);
+  while ((m = re.exec(html)) !== null) {
+    const url = normalizeEventUrl(m[1]);
+    if (url && !seen.has(url)) {
+      seen.add(url);
+      urls.push(url);
+    }
   }
   return urls;
 }
 
-function parseDate(value) {
-  const m = String(value).match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})(?:\s+(\d{1,2}):(\d{2}))?$/);
-  if (!m) return null;
-  const year = 2000 + Number(m[3]);
-  const hour = m[4] ? Number(m[4]) : 0;
-  const minute = m[5] ? Number(m[5]) : 0;
-  const dt = new Date(Date.UTC(year, Number(m[1]) - 1, Number(m[2]), hour, minute));
-  return Number.isNaN(dt.getTime()) ? null : dt;
+function looksLikeCompetitionName(text) {
+  if (!text) return false;
+  const bad = /^(Name|Date|Type|Location|Players|Divisions|Comment|Registration|Find competition|Start practice|Create competition|Login|Sign up|Dashboard settings)$/i;
+  return !bad.test(text.trim()) && /[A-Za-zÅÄÖåäö0-9]/.test(text);
 }
 
-function haversineKm(a, b) {
-  const R = 6371;
-  const toRad = (deg) => deg * Math.PI / 180;
-  const dLat = toRad(b.lat - a.lat);
-  const dLon = toRad(b.lon - a.lon);
-  const lat1 = toRad(a.lat);
-  const lat2 = toRad(b.lat);
-  const x = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
-}
+function parseRowsFromText(text, urls) {
+  const lines = text.split('\n').map((x) => x.trim()).filter(Boolean);
+  const rows = [];
+  let pendingRegistration = null;
+  let waitingForDueLine = false;
+  let urlIndex = 0;
 
-function maybeTitle(text) {
-  const patterns = [
-    /Main Find competition Register here Unfollow (.*?) (\d{1,2}\/\d{1,2}\/\d{2}(?: \d{1,2}:\d{2})?)\|/i,
-    /Register here Unfollow (.*?) (\d{1,2}\/\d{1,2}\/\d{2}(?: \d{1,2}:\d{2})?)\|/i,
-    /(.*?) (\d{1,2}\/\d{1,2}\/\d{2}(?: \d{1,2}:\d{2})?)\|/i
-  ];
-  for (const re of patterns) {
-    const m = text.match(re);
-    if (m && !/metrix/i.test(m[1])) return m[1].trim();
-  }
-  return 'Unknown title';
-}
-
-function parseEventFromText(url, text) {
-  let m = text.match(/(\d{1,2}\/\d{1,2}\/\d{2}(?: \d{1,2}:\d{2})?)\|([^|]+)\|([^\n]+?)(?: PDGA:| Comment:| Registration| Results)/i);
-  if (!m) {
-    m = text.match(/(\d{1,2}\/\d{1,2}\/\d{2}(?: \d{1,2}:\d{2})?)\|([^|]+)\|([^\n]+?)\s+(?:Comment:|Conditions)/i);
-  }
-  if (!m) throw new Error('Could not parse date/place line');
-
-  const date = m[1].trim();
-  const course = m[2].trim();
-  const place = m[3].trim();
-  const dt = parseDate(date);
-
-  const comment = (text.match(/Comment: (.*?) (?:Info Registration News Conditions|Registration News Conditions|Conditions|Results|Comments)/i)?.[1] || '').trim();
-  const regDue = text.match(/Registration end: (\d{1,2}\/\d{1,2}\/\d{2}(?: \d{1,2}:\d{2})?)/i)?.[1] || '';
-  const maxRegistrants = Number(text.match(/Maximum number of players: (\d+)/i)?.[1] || '') || null;
-  const registered = Number(text.match(/The number of registered players: (\d+)/i)?.[1] || '') || null;
-  const classMatches = text.match(/\b(?:MA\d{1,2}|FA\d{1,2}|MP\d{1,2}|FP\d{1,2}|MJ\d{1,2}|FJ\d{1,2}|Mixed Amateur \d|Womens Amateur \d|Pro Open Women|Pro Open|Pro Master \d\d\+|Pro Master Women \d\d\+|Junior ≤ \d+|Junior Girls ≤ \d+)\b/g) || [];
-  const classes = Array.from(new Set(classMatches.map(x => x.trim())));
-  const lower = ` ${text.toLowerCase()} `;
-  const isCTier = lower.includes(' c - pdga ') || lower.includes(' c pdga ') || lower.includes(' pdga c-tier ') || lower.includes(' pdga c tier ');
-
-  return {
-    url,
-    title: maybeTitle(text),
-    date,
-    event_datetime_iso: dt ? dt.toISOString() : null,
-    course,
-    place,
-    description: comment,
-    classes,
-    max_registrants: maxRegistrants,
-    registered,
-    registration_due: regDue,
-    is_c_tier: isCTier
-  };
-}
-
-async function fetchAndParseEvent(url) {
-  const page = await fetchText(url);
-  const text = stripHtml(page);
-  return parseEventFromText(url, text);
-}
-
-async function geocodePlace(place, logs) {
-  const lower = place.toLowerCase();
-  for (const [name, coords] of FALLBACK_COORDS.entries()) {
-    if (lower.includes(name)) return { lat: coords[0], lon: coords[1], source: `fallback:${name}` };
-  }
-  try {
-    const q = encodeURIComponent(place);
-    const body = await fetchText(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${q}`);
-    const data = JSON.parse(body);
-    if (Array.isArray(data) && data.length) {
-      return { lat: Number(data[0].lat), lon: Number(data[0].lon), source: 'nominatim' };
-    }
-  } catch (err) {
-    logs.push(`Geocode failed for ${place}: ${String(err.message || err)}`);
-  }
-  return null;
-}
-
-function withinNext30Days(iso) {
-  if (!iso) return false;
-  const now = Date.now();
-  const ms = Date.parse(iso);
-  if (Number.isNaN(ms)) return false;
-  return ms >= now && ms <= now + THIRTY_DAYS_MS;
-}
-
-async function discoverCandidates(logs) {
-  const urls = new Set();
-
-  for (const listUrl of LIST_URLS) {
-    try {
-      logs.push(`Listing: ${listUrl}`);
-      const html = await fetchText(listUrl);
-      const before = urls.size;
-      for (const url of extractEventUrlsFromHtml(html)) urls.add(url);
-      logs.push(`  -> ${urls.size - before} new event links from Metrix list`);
-    } catch (err) {
-      logs.push(`Listing failed: ${String(err.message || err)}`);
-    }
-  }
-
-  if (urls.size === 0) {
-    for (const query of SEARCH_QUERIES) {
-      try {
-        logs.push(`Search fallback: ${query}`);
-        const xml = await fetchText(`https://www.bing.com/search?format=rss&q=${encodeURIComponent(query)}`);
-        const items = parseBingRss(xml);
-        const before = urls.size;
-        for (const item of items) {
-          const direct = normalizeMetrixUrl(item.link);
-          if (direct) urls.add(direct);
-          for (const url of extractEventUrlsFromText(`${item.title} ${item.description}`)) urls.add(url);
-        }
-        logs.push(`  -> ${urls.size - before} new event links from search`);
-      } catch (err) {
-        logs.push(`Search fallback failed: ${String(err.message || err)}`);
+  for (const line of lines) {
+    if (/until/i.test(line) && /\d{1,2}\/\d{1,2}\/\d{2}/.test(line)) {
+      const dates = line.match(/\d{1,2}\/\d{1,2}\/\d{2}(?:\s+\d{1,2}:\d{2})?/g) || [];
+      if (dates.length >= 2) {
+        pendingRegistration = dates[dates.length - 1];
+        waitingForDueLine = false;
+      } else {
+        waitingForDueLine = true;
       }
-    }
-  }
-
-  return Array.from(urls).sort();
-}
-
-async function runSearch() {
-  const logs = [];
-  const candidates = await discoverCandidates(logs);
-  logs.push(`Total candidate event pages: ${candidates.length}`);
-
-  const parsed = [];
-  for (const url of candidates) {
-    try {
-      logs.push(`Fetching event: ${url}`);
-      parsed.push(await fetchAndParseEvent(url));
-    } catch (err) {
-      logs.push(`Failed to parse ${url}: ${String(err.message || err)}`);
-    }
-  }
-
-  const events = [];
-  for (const ev of parsed) {
-    if (!withinNext30Days(ev.event_datetime_iso)) continue;
-    if (!ev.is_c_tier) continue;
-    const coords = await geocodePlace(ev.place, logs);
-    if (!coords) {
-      logs.push(`Could not geocode: ${ev.place}`);
       continue;
     }
-    const distance = haversineKm(HELSINKI, coords);
-    if (distance > 100) continue;
-    events.push({ ...ev, distance_km: Math.round(distance * 10) / 10, geocode_source: coords.source });
+    if (waitingForDueLine && /^\d{1,2}\/\d{1,2}\/\d{2}(?:\s+\d{1,2}:\d{2})?$/.test(line)) {
+      pendingRegistration = line;
+      waitingForDueLine = false;
+      continue;
+    }
+
+    const parts = line.split('|').map((x) => x.trim()).filter(Boolean);
+    if (parts.length < 7) continue;
+    if (!looksLikeCompetitionName(parts[0])) continue;
+    if (!/\d{1,2}\/\d{1,2}\/\d{2}/.test(parts[1])) continue;
+    if (!/\bC\b/i.test(parts[2]) && !/PDGA/i.test(parts[2])) continue;
+
+    const row = {
+      title: parts[0],
+      date: parts[1],
+      type: parts[2],
+      place: parts[3],
+      registered: Number(parts[4]) || 0,
+      classes: parts[5] ? parts[5].split(/\s{2,}|,(?!\d)/).map((x) => x.trim()).filter(Boolean) : [],
+      description: parts[6] || '',
+      registration_due: pendingRegistration || '',
+      source_url: urls[urlIndex] || null
+    };
+    rows.push(row);
+    urlIndex += 1;
+    pendingRegistration = null;
   }
 
-  events.sort((a, b) => String(a.event_datetime_iso).localeCompare(String(b.event_datetime_iso)));
-  logs.push(`Final matches: ${events.length}`);
-
-  return {
-    ok: true,
-    generated_at: new Date().toISOString(),
-    candidate_count: candidates.length,
-    checked_count: parsed.length,
-    events,
-    logs
-  };
+  return rows;
 }
 
-export async function onRequestGet(context) {
-  const url = new URL(context.request.url);
-  if (url.pathname === '/api/health') {
-    return json({ ok: true, runtime: 'cloudflare-pages-function', now: new Date().toISOString() });
-  }
+function parseDetailText(baseUrl, text) {
+  const maxRegistrants = Number((text.match(/Maximum number of players:?\s*(\d+)/i) || [])[1] || '') || null;
+  const registered = Number((text.match(/The number of registered players:?\s*(\d+)/i) || [])[1] || '') || null;
+  const regDue = (text.match(/Registration end:?\s*(\d{1,2}\/\d{1,2}\/\d{2}(?:\s+\d{1,2}:\d{2})?)/i) || [])[1] || '';
+  const classMatches = text.match(/(?:Pro Open Women|Pro Open|Mixed Amateur \d|Womens Amateur \d|Mixed Amateur \d\+|Womens Amateur \d\+|Mixed Amateur 40\+|Womens Amateur 40\+|Mixed Amateur 50\+|Womens Amateur 50\+|Junior ≤ \d+|Junior Girls ≤ \d+|Gold(?:\s+[A-Z]{3}\s*<?\d+)?|White(?:\s+[A-Z]{3}\s*<?\d+)?|Red(?:\s+[A-Z]{3}\s*<?\d+)?|Green(?:\s+[A-Z]{3}\s*<?\d+)?|Purple(?:\s+[A-Z]{3}\s*<?\d+)?)/g) || [];
+  const classes = Array.from(new Set(classMatches.map((x) => x.trim()).filter(Boolean)));
+  return { url: baseUrl, max_registrants: maxRegistrants, registered, registration_due: regDue, classes };
+}
+
+export async function onRequestGet() {
+  const logs = [];
   try {
-    return json(await runSearch(), 200);
+    const searchUrl = buildSearchUrl();
+    logs.push(`Search URL: ${searchUrl}`);
+    const html = await fetchText(searchUrl);
+    logs.push(`Fetched search page: ${html.length} chars`);
+
+    const urls = extractEventUrlsFromHtml(html);
+    logs.push(`Event links found in HTML: ${urls.length}`);
+
+    const text = stripHtml(html);
+    const rows = parseRowsFromText(text, urls);
+    logs.push(`Competition rows parsed: ${rows.length}`);
+
+    const events = [];
+    for (const row of rows) {
+      const event = { ...row, url: row.source_url, max_registrants: null };
+      if (row.source_url) {
+        try {
+          const detailHtml = await fetchText(row.source_url);
+          const detailText = stripHtml(detailHtml);
+          const detail = parseDetailText(row.source_url, detailText);
+          if (detail.max_registrants != null) event.max_registrants = detail.max_registrants;
+          if (detail.registered != null) event.registered = detail.registered;
+          if (detail.registration_due) event.registration_due = detail.registration_due;
+          if (detail.classes.length) event.classes = detail.classes;
+          logs.push(`Detail ok: ${row.title}`);
+        } catch (err) {
+          logs.push(`Detail failed for ${row.title}: ${String(err.message || err)}`);
+        }
+      }
+      events.push(event);
+    }
+
+    return json({
+      ok: true,
+      generated_at: new Date().toISOString(),
+      row_count: rows.length,
+      checked_count: events.filter((x) => x.source_url).length,
+      events,
+      logs
+    });
   } catch (err) {
-    return json({ ok: false, error: String(err.message || err), stack: String(err.stack || '') }, 500);
+    logs.push(`Fatal: ${String(err.message || err)}`);
+    return json({ ok: false, error: String(err.message || err), logs }, 500);
   }
 }
